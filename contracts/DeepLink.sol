@@ -53,15 +53,8 @@ contract DeepLink is ERC20, Ownable {
         isLockActive = true;
     }
 
-    receive() external payable {}
-
-    fallback() external payable {}
-
     function claimStuckTokens(address token) external onlyOwner {
-        if (token == address(0x0)) {
-            payable(msg.sender).transfer(address(this).balance);
-            return;
-        }
+        require(token != address(0x0), "invalid token address");
         IERC20 ERC20token = IERC20(token);
         uint256 balance = ERC20token.balanceOf(address(this));
         ERC20token.safeTransfer(msg.sender, balance);
