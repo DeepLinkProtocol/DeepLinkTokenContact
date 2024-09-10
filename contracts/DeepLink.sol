@@ -1,15 +1,13 @@
-/**
- *Submitted for verification at BscScan.com on 2024-04-02
- */
-
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.7.0 <0.9.0;
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract DeepLink is ERC20, Ownable {
+contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20PermitUpgradeable {
     using SafeERC20 for IERC20;
     bool public isLockActive;
 
@@ -45,16 +43,16 @@ contract DeepLink is ERC20, Ownable {
         require(isOwner || isAdmin, "not owner or lock transfer admin");
         _;
     }
-    constructor(
-        address contract_owner
-    ) ERC20("DeepLink", "DLC") Ownable(contract_owner) {
-        _mint(owner(), 10_000_000_000 * 10 ** decimals());
 
+    function initialize(address initialOwner) public initializer {
+        __ERC20_init("DeepLink", "DLC");
+        __Ownable_init(initialOwner);
+        _mint(owner(), 10_000_000_000 * 10 ** decimals());
         isLockActive = true;
     }
 
+
     function claimStuckTokens(address token) external onlyOwner {
-        require(token != address(0x0), "invalid token address");
         IERC20 ERC20token = IERC20(token);
         uint256 balance = ERC20token.balanceOf(address(this));
         ERC20token.safeTransfer(msg.sender, balance);
@@ -87,15 +85,15 @@ contract DeepLink is ERC20, Ownable {
     function transferAndLock(
         address to,
         uint256 value,
-        uint256 blockNumber
+        uint256 lockSeconds
     ) external onlyOwnerOrLockTransferAdmin {
-        uint256 lockedAt = block.number;
-        uint256 unLockAt = lockedAt + blockNumber;
+        uint256 lockedAt = block.timestamp;
+        uint256 unLockAt = lockedAt + lockSeconds;
         LockInfo[] storage infos = walletLockBlock[to];
         infos.push(LockInfo(lockedAt, value, unLockAt));
         transfer(to, value);
 
-        emit TransferAndLock(msg.sender, to, value, blockNumber);
+        emit TransferAndLock(msg.sender, to, value, block.number);
     }
 
     function transfer(
@@ -130,7 +128,7 @@ contract DeepLink is ERC20, Ownable {
 
         uint256 lockedAmount = 0;
         for (uint256 i = 0; i < lockInfos.length; i++) {
-            if (block.number < lockInfos[i].unlockAt) {
+            if (block.timestamp < lockInfos[i].unlockAt) {
                 lockedAmount += lockInfos[i].lockedAmount;
             }
         }
@@ -141,18 +139,18 @@ contract DeepLink is ERC20, Ownable {
 
     function getAvailableAmount(
         address caller
-    ) public view returns (uint256, uint256, uint256) {
+    ) public view returns (uint256, uint256) {
         LockInfo[] storage lockInfos = walletLockBlock[caller];
 
         uint256 lockedAmount = 0;
         for (uint256 i = 0; i < lockInfos.length; i++) {
-            if (block.number < lockInfos[i].unlockAt) {
+            if (block.timestamp < lockInfos[i].unlockAt) {
                 lockedAmount += lockInfos[i].lockedAmount;
             }
         }
         uint256 total = IERC20(this).balanceOf(caller);
         uint256 availableAmount = IERC20(this).balanceOf(caller) - lockedAmount;
-        return (total, availableAmount, block.number);
+        return (total, availableAmount);
     }
 
     function getLockAmountAndUnlockAt(
