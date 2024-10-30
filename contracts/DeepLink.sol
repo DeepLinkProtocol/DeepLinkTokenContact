@@ -3,11 +3,12 @@
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20PermitUpgradeable {
+contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20PermitUpgradeable, ERC20BurnableUpgradeable {
     using SafeERC20 for IERC20;
     bool public isLockActive;
 
@@ -19,6 +20,17 @@ contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20Perm
 
     mapping(address => LockInfo[]) walletLockBlock;
     address[] public lockTransferAdmins;
+
+    uint256 public  initSupply;
+    uint256 public  maxSupply;
+    uint256 public alreadyMinted;
+    uint256 public supplyForStaking;
+    uint256 public supplyForOrionStaking;
+
+
+    mapping(address => uint256) public minter2MintAmount;
+    mapping(address => bool) public burners;
+
 
     event LockDisabled(uint256 timestamp, uint256 blockNumber);
     event LockEnabled(uint256 timestamp, uint256 blockNumber);
@@ -47,8 +59,38 @@ contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20Perm
     function initialize(address initialOwner) public initializer {
         __ERC20_init("DeepLink", "DLC");
         __Ownable_init(initialOwner);
-        _mint(owner(), 10_000_000_000 * 10 ** decimals());
+
+        maxSupply = 90_000_000_000 * 10 ** decimals();
+        supplyForStaking = 20_000_000_000 * 10 ** decimals();
+        supplyForOrionStaking = 3_000_000_000 * 10 ** decimals();
+        initSupply = maxSupply - supplyForStaking - supplyForOrionStaking;
+        alreadyMinted = initSupply;
+
+        _mint(owner(), initSupply);
         isLockActive = true;
+    }
+
+    function setMinter(address minter, uint256 amount) public onlyOwner {
+        require(amount <= maxSupply - alreadyMinted, "max supply reached");
+        minter2MintAmount[minter] = amount;
+    }
+
+    function mint(address to, uint256 amount) external {
+        uint256 totalAmount = minter2MintAmount[msg.sender];
+        require(totalAmount >= amount , "can not mint");
+        require(alreadyMinted + amount <= maxSupply, "max supply reached");
+        _mint(to, amount);
+        minter2MintAmount[msg.sender] = totalAmount - amount;
+        alreadyMinted += amount;
+    }
+
+    function setBurner(address burner)  public onlyOwner{
+        burners[burner] = true;
+    }
+
+    function burn(uint256 value) public override {
+        require(burners[msg.sender], "not a valid burner");
+        super.burn(value);
     }
 
 
