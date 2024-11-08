@@ -21,15 +21,14 @@ contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20Perm
     mapping(address => LockInfo[]) walletLockBlock;
     address[] public lockTransferAdmins;
 
-    uint256 public  initSupply;
-    uint256 public  maxSupply;
+    uint256 public initSupply;
+    uint256 public maxSupply;
     uint256 public alreadyMinted;
     uint256 public supplyForStaking;
     uint256 public supplyForOrionStaking;
 
 
     mapping(address => uint256) public minter2MintAmount;
-    mapping(address => bool) public burners;
 
 
     event LockDisabled(uint256 timestamp, uint256 blockNumber);
@@ -83,16 +82,6 @@ contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20Perm
         minter2MintAmount[msg.sender] = totalAmount - amount;
         alreadyMinted += amount;
     }
-
-    function setBurner(address burner)  public onlyOwner{
-        burners[burner] = true;
-    }
-
-    function burn(uint256 value) public override {
-        require(burners[msg.sender], "not a valid burner");
-        super.burn(value);
-    }
-
 
     function claimStuckTokens(address token) external onlyOwner {
         IERC20 ERC20token = IERC20(token);
@@ -209,5 +198,9 @@ contract Token is Initializable, ERC20Upgradeable, OwnableUpgradeable, ERC20Perm
 
     function addLockTransferAdmin(address wallet) external onlyOwner {
         lockTransferAdmins.push(wallet);
+    }
+
+    function version() external pure returns (uint256) {
+        return 2;
     }
 }
