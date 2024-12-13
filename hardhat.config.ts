@@ -9,7 +9,7 @@ require('@openzeppelin/hardhat-upgrades');
 
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.20",
+  solidity: "0.8.22",
   sourcify: {
     // Enable Sourcify verification by default
     enabled: true,
@@ -38,9 +38,7 @@ const config: HardhatUserConfig = {
     },
     dbcMainnet: {
       url: 'https://rpc.dbcwallet.io',
-      accounts: {
-        mnemonic: process.env.MNEMONIC || '',
-      },
+      accounts: [process.env.PRIVATE_KEY],
       chainId: 19880818,
       timeout: 600000,
     }
@@ -75,8 +73,8 @@ const config: HardhatUserConfig = {
         network: "dbcMainnet",
         chainId: 19880818,
         urls: {
-          apiURL: "https://blockscout.dbcscan.io/api",
-          browserURL: "https://blockscout.dbcscan.io",
+          apiURL: "https://www.dbcscan.io/api",
+          browserURL: "https://www.dbcscan.io",
         },
       }
     ]
