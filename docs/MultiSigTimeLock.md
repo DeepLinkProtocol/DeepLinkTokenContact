@@ -10,7 +10,7 @@ This contract allows multiple signer to agree on a transaction after a specified
 
 ⚠️Note: any signer can revoke the proposal by calling revokeProposal(..) function of MultiSigTimeLock contract with the proposal id before the time lock period is over.
 
-#### call ‘addLockTransferAdmin’ function Example:
+#### Call ‘addLockTransferAdmin’ function Example:
 1.call requestAddLockTransferAdmin of Token contract with the required parameters to get the call hash!![img.png](img.png)
 2.call createProposal of MultiSigTimeLock contract with the call hash and required parameters. the 'target' is the address of the Token contract and the 'data' is the call hash ![img_7.png](img_7.png)
 3.view the tx hash detail on dbcscan you will find the proposal id![img_8.png](img_8.png)
@@ -18,5 +18,3 @@ This contract allows multiple signer to agree on a transaction after a specified
 5.you can call getProposal function of MultiSigTimeLock contract to check the when the transaction can be execute![img_10.png](img_10.png)
 6.after the lock time for the proposal. anyone can call executeProposal of MultiSigTimeLock contract with the proposal id to execute the transaction and if approve count is reach the required approve count, the transaction will be executed.![img_11.png](img_11.png)
 
-### some functions:
-- 
