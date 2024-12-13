@@ -31,10 +31,10 @@ upgrade-dbc-mainnet:
 
 
 deploy_multi_sign_time_lock-dbc-mainnet:
-	source .env && npx hardhat run script/deploy_multi_sign_time_lock.ts --network mainnet
+	source .env && npx hardhat run script/deploy_multi_sign_time_lock.ts --network dbcMainnet
 
 verify_multi_sign_time_lock-dbc-mainnet:
-	source .env && npx hardhat verify --network dbcTestnet $MULTI_SGIN_TIME_LOCK_CONTRACT
+	source .env && npx hardhat verify --network dbcMainnet $MULTI_SGIN_TIME_LOCK_CONTRACT
 
 upgrade_multi_sign_time_lock-dbc-mainnet:
-	npx hardhat run script/upgrade_multi_sign_time_lock.ts --network mainnet
+	npx hardhat run script/upgrade_multi_sign_time_lock.ts --network dbcMainnet
