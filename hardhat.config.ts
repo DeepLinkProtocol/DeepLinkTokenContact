@@ -1,6 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-ethers" ;
+import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-verify";
 import dotenv from 'dotenv';
 dotenv.config();
@@ -10,6 +10,18 @@ require('@openzeppelin/hardhat-upgrades');
 
 const config: HardhatUserConfig = {
   solidity: "0.8.22",
+  settings: {
+    optimizer: {
+      enabled: true,
+      runs: 200,
+    },
+  },
+  paths: {
+    artifacts: "./artifacts",
+    cache: "./cache",
+    sources: "./contracts",
+    tests: "./test",
+  },
   sourcify: {
     // Enable Sourcify verification by default
     enabled: true,
@@ -21,7 +33,7 @@ const config: HardhatUserConfig = {
       // accounts: ["b5eb18473a135e9edf076c00df53d76575fa86bca530c7a650921161189a4ac"],
       accounts: [process.env.PRIVATE_KEY],
     },
-    bscTestnet :{
+    bscTestnet: {
       url: 'https://data-seed-prebsc-1-s3.binance.org:8545',
       chainId: 97,
       accounts: [process.env.BSC_PRIVATE_KEY],

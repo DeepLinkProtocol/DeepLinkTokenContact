@@ -62,7 +62,9 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
         initializer
     {
         require(_signers.length > 0, "Signers should not be empty");
-        require(_requiredApproveCount == _signers.length / 2 + 1, "Required signatures must be = signers/2 + 1");
+        require(
+            _requiredApproveCount == _signers.length / 2 + 1, "Required requiredApproveCount must be = signers/2 + 1"
+        );
         require(_minDelaySeconds > 0, "Min delay should be > 0");
         for (uint256 i = 0; i < _signers.length; i++) {
             require(_signers[i] != address(0), "Invalid signer address");
@@ -100,10 +102,38 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
         return false;
     }
 
-    function createProposal(address target, bytes memory data) external onlySigner {
-        uint256 _canVoteBeforeTimestamp = block.timestamp + minDelaySeconds;
-        uint256 _canExecuteAfterTimestamp = _canVoteBeforeTimestamp + minDelaySeconds;
-        require(target != address(0), "Invalid target address");
+    function _createProposal(
+        address target,
+        bytes memory data,
+        uint256 _canExecuteAfterTimestamp,
+        uint256 _canVoteBeforeTimestamp,
+        ProposalType proposalType,
+        address newSigner,
+        uint256 newMinDelaySeconds,
+        address _canUpgradeAddress
+    ) internal {
+        require(block.timestamp <= _canVoteBeforeTimestamp, "Vote period passed");
+        require(_canExecuteAfterTimestamp > _canVoteBeforeTimestamp, "Can execute after should be > can vote before");
+        require(_canExecuteAfterTimestamp > block.timestamp, "Can execute after should be > current timestamp");
+        require(_canVoteBeforeTimestamp > block.timestamp, "Can vote before should be > current timestamp");
+
+        if (proposalType == ProposalType.Normal) {
+            require(target != address(0), "Invalid target address");
+            require(data.length > 0, "Data should not be empty");
+        } else if (proposalType == ProposalType.AddSigner) {
+            require(newSigner != address(0), "Invalid new signer address");
+            require(!isSigner(newSigner), "Signer already exists");
+        } else if (proposalType == ProposalType.RemoveSigner) {
+            require(newSigner != address(0), "Invalid new signer address");
+            require(isSigner(newSigner), "Signer not exists");
+        } else if (proposalType == ProposalType.UpdateMinDelaySeconds) {
+            require(newMinDelaySeconds > 0, "Min delay should be > 0");
+            require(newMinDelaySeconds != minDelaySeconds, "New min delay should be different from current");
+        } else if (proposalType == ProposalType.UpgradeContract) {
+            require(canUpgradeAddress != address(0), "Invalid canUpgradeAddress address");
+            require(disableUpgrade == false, "Contract upgrade is disabled");
+            require(_canUpgradeAddress != canUpgradeAddress, "Already authorized");
+        }
 
         proposals[proposalCount] = Proposal({
             target: target,
@@ -111,10 +141,10 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
             canExecuteAfterTimestamp: _canExecuteAfterTimestamp,
             canVoteBeforeTimestamp: _canVoteBeforeTimestamp,
             executed: false,
-            proposalType: ProposalType.Normal,
-            newSigner: address(0),
-            minDelaySeconds: 0,
-            canUpgradeAddress: address(0)
+            proposalType: proposalType,
+            newSigner: newSigner,
+            minDelaySeconds: newMinDelaySeconds,
+            canUpgradeAddress: _canUpgradeAddress
         });
 
         proposal2ExecuteExpireAt[proposalCount] = _canExecuteAfterTimestamp + minDelaySeconds;
@@ -125,94 +155,80 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
         proposalCount++;
     }
 
-    function createUpgradeContractProposal(address _canUpgradeAddress) external onlySigner {
-        require(disableUpgrade == false, "Contract upgrade is disabled");
-        require(_canUpgradeAddress != canUpgradeAddress, "Already authorized");
-        require(_canUpgradeAddress != address(0), "Invalid canUpgradeAddress address");
+    function getVoteTimeAndExecuteTime() internal view returns (uint256, uint256) {
         uint256 _canVoteBeforeTimestamp = block.timestamp + minDelaySeconds;
         uint256 _canExecuteAfterTimestamp = _canVoteBeforeTimestamp + minDelaySeconds;
+        return (_canVoteBeforeTimestamp, _canExecuteAfterTimestamp);
+    }
 
-        proposals[proposalCount] = Proposal({
-            target: address(0),
-            data: "",
-            canExecuteAfterTimestamp: _canExecuteAfterTimestamp,
-            executed: false,
-            proposalType: ProposalType.UpgradeContract,
-            newSigner: address(0),
-            canVoteBeforeTimestamp: _canVoteBeforeTimestamp,
-            minDelaySeconds: 0,
-            canUpgradeAddress: _canUpgradeAddress
-        });
+    function createProposal(address target, bytes memory data) external onlySigner {
+        (uint256 _canVoteBeforeTimestamp, uint256 _canExecuteAfterTimestamp) = getVoteTimeAndExecuteTime();
+        _createProposal(
+            target,
+            data,
+            _canExecuteAfterTimestamp,
+            _canVoteBeforeTimestamp,
+            ProposalType.Normal,
+            address(0),
+            0,
+            address(0)
+        );
+    }
 
-        emit ProposalCreated(proposalCount);
-        proposalCount++;
+    function createUpgradeContractProposal(address _canUpgradeAddress) external onlySigner {
+        (uint256 _canVoteBeforeTimestamp, uint256 _canExecuteAfterTimestamp) = getVoteTimeAndExecuteTime();
+        _createProposal(
+            address(0),
+            "",
+            _canExecuteAfterTimestamp,
+            _canVoteBeforeTimestamp,
+            ProposalType.UpgradeContract,
+            address(0),
+            0,
+            _canUpgradeAddress
+        );
     }
 
     function createUpdateMinDelaySecondsProposal(uint256 newMinDelaySeconds) external onlySigner {
-        require(newMinDelaySeconds > 0, "minDelaySeconds should be > 0");
-        require(newMinDelaySeconds != minDelaySeconds, "New min delay should be different from current");
-        uint256 _canVoteBeforeTimestamp = block.timestamp + minDelaySeconds;
-        uint256 _canExecuteAfterTimestamp = _canVoteBeforeTimestamp + minDelaySeconds;
-
-        proposals[proposalCount] = Proposal({
-            target: address(0),
-            data: "",
-            canExecuteAfterTimestamp: _canExecuteAfterTimestamp,
-            executed: false,
-            proposalType: ProposalType.UpdateMinDelaySeconds,
-            newSigner: address(0),
-            canVoteBeforeTimestamp: _canVoteBeforeTimestamp,
-            minDelaySeconds: newMinDelaySeconds,
-            canUpgradeAddress: address(0)
-        });
-
-        emit ProposalCreated(proposalCount);
-        proposalCount++;
+        (uint256 _canVoteBeforeTimestamp, uint256 _canExecuteAfterTimestamp) = getVoteTimeAndExecuteTime();
+        _createProposal(
+            address(0),
+            "",
+            _canExecuteAfterTimestamp,
+            _canVoteBeforeTimestamp,
+            ProposalType.UpdateMinDelaySeconds,
+            address(0),
+            newMinDelaySeconds,
+            address(0)
+        );
     }
 
     function createAddSignerProposal(address signer) external onlySigner {
-        require(signer != address(0), "Invalid signer address");
-        require(!isSigner(signer), "Signer already exists");
-        uint256 _canVoteBeforeTimestamp = block.timestamp + minDelaySeconds;
-        uint256 _canExecuteAfterTimestamp = _canVoteBeforeTimestamp + minDelaySeconds;
-
-        proposals[proposalCount] = Proposal({
-            target: address(0),
-            data: "",
-            canExecuteAfterTimestamp: _canExecuteAfterTimestamp,
-            executed: false,
-            proposalType: ProposalType.AddSigner,
-            newSigner: signer,
-            canVoteBeforeTimestamp: _canVoteBeforeTimestamp,
-            minDelaySeconds: 0,
-            canUpgradeAddress: address(0)
-        });
-
-        emit ProposalCreated(proposalCount);
-        proposalCount++;
+        (uint256 _canVoteBeforeTimestamp, uint256 _canExecuteAfterTimestamp) = getVoteTimeAndExecuteTime();
+        _createProposal(
+            address(0),
+            "",
+            _canExecuteAfterTimestamp,
+            _canVoteBeforeTimestamp,
+            ProposalType.AddSigner,
+            signer,
+            0,
+            address(0)
+        );
     }
 
     function createRemoveSignerProposal(address signer) external onlySigner {
-        require(signer != address(0), "Invalid signer address");
-        require(isSigner(signer), "Signer not exists");
-
-        uint256 _canVoteBeforeTimestamp = block.timestamp + minDelaySeconds;
-        uint256 _canExecuteAfterTimestamp = _canVoteBeforeTimestamp + minDelaySeconds;
-
-        proposals[proposalCount] = Proposal({
-            target: address(0),
-            data: "",
-            canExecuteAfterTimestamp: _canExecuteAfterTimestamp,
-            executed: false,
-            proposalType: ProposalType.RemoveSigner,
-            newSigner: signer,
-            canVoteBeforeTimestamp: _canVoteBeforeTimestamp,
-            minDelaySeconds: 0,
-            canUpgradeAddress: address(0)
-        });
-
-        emit ProposalCreated(proposalCount);
-        proposalCount++;
+        (uint256 _canVoteBeforeTimestamp, uint256 _canExecuteAfterTimestamp) = getVoteTimeAndExecuteTime();
+        _createProposal(
+            address(0),
+            "",
+            _canExecuteAfterTimestamp,
+            _canVoteBeforeTimestamp,
+            ProposalType.RemoveSigner,
+            signer,
+            0,
+            address(0)
+        );
     }
 
     function approveProposal(uint256 proposalId) external onlySigner {
@@ -259,6 +275,7 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
         if (proposals[proposalId].proposalType == ProposalType.Normal) {
             require(proposals[proposalId].target != address(0), "Invalid proposal");
         }
+
         uint256 approvalCount = 0;
         for (uint256 i = 0; i < signers.length; i++) {
             if (approvals[proposalId][signers[i]]) {
@@ -327,26 +344,20 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
     }
 
     function createDisableUpgradeForCurrentContractProposal() external onlySigner {
-        uint256 _canVoteBeforeTimestamp = block.timestamp + minDelaySeconds;
-        uint256 _canExecuteAfterTimestamp = _canVoteBeforeTimestamp + minDelaySeconds;
-
-        proposals[proposalCount] = Proposal({
-            target: address(0),
-            data: "",
-            canExecuteAfterTimestamp: _canExecuteAfterTimestamp,
-            executed: false,
-            proposalType: ProposalType.DisableContractUpgrade,
-            newSigner: address(0),
-            canVoteBeforeTimestamp: _canVoteBeforeTimestamp,
-            minDelaySeconds: 0,
-            canUpgradeAddress: address(0)
-        });
-
-        emit ProposalCreated(proposalCount);
-        proposalCount++;
+        (uint256 _canVoteBeforeTimestamp, uint256 _canExecuteAfterTimestamp) = getVoteTimeAndExecuteTime();
+        _createProposal(
+            address(0),
+            "",
+            _canExecuteAfterTimestamp,
+            _canVoteBeforeTimestamp,
+            ProposalType.DisableContractUpgrade,
+            address(0),
+            0,
+            address(0)
+        );
     }
 
     function version() external pure returns (int256) {
-        return 0;
+        return 1;
     }
 }
