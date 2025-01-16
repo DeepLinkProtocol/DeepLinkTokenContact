@@ -243,7 +243,7 @@ contract MultiSigTimeLock is Initializable, UUPSUpgradeable {
             require(proposal.newSigner != address(0), "Invalid new signer address");
         } else if (proposal.proposalType == ProposalType.UpdateMinDelaySeconds) {
             require(proposal.minDelaySeconds > 0, "Min delay should be > 0");
-        } else if (proposal.proposalType == ProposalType.UpgradeContract) {}
+        }
 
         require(!approvals[proposalId][msg.sender], "Already approved");
 
