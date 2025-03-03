@@ -188,7 +188,7 @@ contract Token is
         return availableAmount >= transferAmount;
     }
 
-    function calculateLockedAmount(address from) internal view returns (uint256) {
+    function calculateLockedAmount(address from) public view returns (uint256) {
         LockInfo[] storage lockInfos = walletLockTimestamp[from];
         uint256 lockedAmount = 0;
 
@@ -212,6 +212,11 @@ contract Token is
         require(index < walletLockTimestamp[caller].length, "Index out of range");
         LockInfo memory lockInfo = walletLockTimestamp[caller][index];
         return (lockInfo.lockedAmount, lockInfo.unlockAt);
+    }
+
+    function getLockInfos(address caller) public view returns (LockInfo[] memory) {
+        LockInfo[] memory lockInfos = walletLockTimestamp[caller];
+        return lockInfos;
     }
 
     function requestAddLockTransferAdmin(address addr) external pure returns (bytes memory) {
