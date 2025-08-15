@@ -3,8 +3,8 @@ const { ethers } = require("hardhat");
 dotenv.config();
 
 async function main() {
-    const contractFactory = await ethers.getContractFactory("Token");
-    const contract = await upgrades.deployProxy(contractFactory,[process.env.OWNER,process.env.MULTI_SGIN_TIME_LOCK_CONTRACT], { initializer: 'initialize' });
+    const contractFactory = await ethers.getContractFactory("Points");
+    const contract = await upgrades.deployProxy(contractFactory,[process.env.OWNER], { initializer: 'initialize' });
     console.log("deployed to:", contract.target);
 }
 
