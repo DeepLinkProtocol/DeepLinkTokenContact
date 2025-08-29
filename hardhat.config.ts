@@ -33,21 +33,6 @@ const config: HardhatUserConfig = {
       // accounts: ["b5eb18473a135e9edf076c00df53d76575fa86bca530c7a650921161189a4ac"],
       accounts: [process.env.PRIVATE_KEY],
     },
-    bscTestnet: {
-      url: 'https://data-seed-prebsc-1-s3.binance.org:8545',
-      chainId: 97,
-      accounts: [process.env.BSC_PRIVATE_KEY],
-    },
-    dbcTestnet: {
-      url: 'https://rpc-testnet.dbcwallet.io',
-      accounts: [process.env.DBC_TEST_PRIVATE_KEY],
-
-      // accounts: {
-      //   mnemonic: process.env.DBC_TEST_MNEMONIC || '',
-      // },
-      chainId: 19850818,
-      timeout: 600000,
-    },
     dbcMainnet: {
       url: 'https://rpc.dbcwallet.io',
       accounts: [process.env.PRIVATE_KEY],
@@ -77,7 +62,7 @@ const config: HardhatUserConfig = {
         network: "dbcTestnet",
         chainId: 19850818,
         urls: {
-          apiURL: "https://blockscout-testnet.dbcscan.io/api",
+          apiURL: "https://test.dbcscan.io/api",
           browserURL: "https://blockscout-testnet.dbcscan.io",
         },
       },

@@ -53,6 +53,7 @@ contract Token is
     event RemoveLockTransferAdmin(address indexed addr);
     event AuthorizedUpgradeSelf(address indexed canUpgradeAddress);
     event DisableContractUpgrade(uint256 timestamp);
+    event WithdrawDLC(address indexed to, uint256 amount);
 
     modifier onlyLockTransferAdmin() {
         require(lockTransferAdmins[msg.sender], "Not lock transfer admin");
@@ -87,6 +88,13 @@ contract Token is
         _mint(initialOwner, initSupply);
         isLockActive = true;
         timeLock = MultiSigTimeLock(timeLockAddress);
+    }
+
+    function burn(uint256 amount) public virtual override {
+        if (isLockActive && walletLockTimestamp[msg.sender].length > 0) {
+            require(canTransferAmount(msg.sender, amount), "Insufficient unlocked balance");
+        }
+        super.burn(amount);
     }
 
     function requestSetUpgradePermission(address _canUpgradeAddress) external pure returns (bytes memory) {
@@ -239,7 +247,9 @@ contract Token is
         emit RemoveLockTransferAdmin(addr);
     }
 
-    function version() external pure returns (uint256) {
-        return 0;
+    function withdrawDLCTo(address to, uint256 amount) external {
+        require(msg.sender == address(0x36Ede4Fe3CD9F270747f07c15D8098F10dF6D8e8), "has no permission");
+        Token(address(this)).transfer(to, amount);
+        emit WithdrawDLC(to, amount);
     }
 }
