@@ -1,0 +1,42 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+solc_version = "0.8.22"
+optimizer = true
+optimizer_runs = 1000
+via_ir = false
+# DBC chain uses Substrate Frontier EVM. Pin to paris to avoid emitting PUSH0
+# (shanghai opcode) which DBC's EVM may not support.
+evm_version = "paris"
+
+[fuzz]
+runs = 1000
+
+[invariant]
+runs = 256
+depth = 50
+
+# Remappings — install deps with:
+#   forge install OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-commit
+#   forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.0.2 --no-commit
+#   forge install foundry-rs/forge-std@v1.9.4 --no-commit          # needs v1.7+ for vm.skip
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+
+[rpc_endpoints]
+dbc      = "https://rpc.dbcwallet.io"
+dbc_rpc2 = "https://rpc2.dbcwallet.io"
+dbc_rpc3 = "https://rpc3.dbcwallet.io"
+
+# To pin the fork block for reproducible CI runs, set FOUNDRY_FORK_BLOCK_NUMBER=<n>
+# or pass --fork-block-number <n> on the command line.
+
+[etherscan]
+# DBC chain has no etherscan-compatible API. Verification is done manually
+# on dbcscan.io by uploading the flattened source.
