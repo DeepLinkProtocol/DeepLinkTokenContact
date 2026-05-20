@@ -16,3 +16,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+/.keys/
+
+# Private keys (NEVER commit)
